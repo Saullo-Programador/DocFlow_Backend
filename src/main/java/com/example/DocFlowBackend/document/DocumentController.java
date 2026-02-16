@@ -1,9 +1,18 @@
 package com.example.DocFlowBackend.document;
 
 import com.example.DocFlowBackend.storage.FileStorageService;
+import org.springframework.core.io.UrlResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.net.MalformedURLException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/documents")
@@ -20,17 +29,44 @@ public class DocumentController {
     }
 
 
-    @PostMapping("/uploads")
-    public ResponseEntity<String> upload(
+    @PostMapping("/upload")
+    public ResponseEntity<Map<String, String>> upload(
             @RequestParam("file")MultipartFile file
     ){
         try {
-            String path = storageService.save(file);
-            return ResponseEntity.ok("Arquivo salvo em: " + path);
+            String fileName = storageService.save(file);
+            Map<String, String> response = Map.of(
+                    "message", "Arquivo salvo com sucesso",
+                    "fileName", fileName
+            );
+            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
-                    .body("Erro no upload"+ e.getMessage());
+                    .body(Map.of("error", e.getMessage()));
         }
     }
+
+    @GetMapping("/download/{fileName}")
+    public ResponseEntity<Resource> download(@PathVariable String fileName) {
+        try {
+            Path file = Paths.get(storageService.getUploadPath()).resolve(fileName).normalize();
+
+            // Verificar se o arquivo existe
+            if (!Files.exists(file)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Resource resource = new UrlResource(file.toUri());
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                    .body(resource);
+
+        } catch (MalformedURLException e){
+            return ResponseEntity.internalServerError()
+                    .body(null);
+        }
+    }
+
 }
