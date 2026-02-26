@@ -42,8 +42,8 @@ public class FileStorageService {
 
         // Validar extensões permitidas: PDF, Word e Excel
         if (!lowerFileName.endsWith(".pdf") &&
-            !lowerFileName.endsWith(".docx") &&
-            !lowerFileName.endsWith(".xlsx")) {
+                !lowerFileName.endsWith(".docx") &&
+                !lowerFileName.endsWith(".xlsx")) {
             throw new RuntimeException("Apenas arquivos PDF, Word (.docx) ou Excel (.xlsx) são permitidos");
         }
 
@@ -54,7 +54,7 @@ public class FileStorageService {
         String fileName = UUID.randomUUID() + extension;
 
         // Criar o path completo
-        Path path = Paths.get(uploadPath).resolve(fileName);
+        Path path = targetDir.resolve(fileName);
 
         // Salvar o arquivo no sistema de arquivos, sobrescrevendo se existir
         Files.copy(file.getInputStream(), path, StandardCopyOption.REPLACE_EXISTING);
@@ -62,10 +62,41 @@ public class FileStorageService {
         return fileName;
     }
 
-    public List<DocumentResponse> listFiles (String serverUrl) throws IOException{
+    public boolean deleteFile(Path safePath) throws IOException {
+        if (!Files.exists(safePath)) {
+            return false;
+        }
+
+        Files.delete(safePath);
+        return true;
+    }
+
+    public boolean deleteFolder(String folderPath) throws IOException {
+        Path dir = Paths.get(uploadPath).resolve(folderPath);
+
+        if (!Files.exists(dir)) {
+            return false;
+        }
+
+        // apaga tudo dentro da pasta
+        try (Stream<Path> walk = Files.walk(dir)) {
+            walk.sorted((a, b) -> b.compareTo(a)) // de baixo pra cima
+                    .forEach(path -> {
+                        try {
+                            Files.delete(path);
+                        } catch (IOException e) {
+                            throw new RuntimeException("Erro ao deletar: " + path, e);
+                        }
+                    });
+        }
+
+        return true;
+    }
+
+    public List<DocumentResponse> listFiles(String serverUrl) throws IOException {
         Path root = Paths.get(uploadPath);
 
-        if (!Files.exists(root)){
+        if (!Files.exists(root)) {
             return List.of();
         }
 

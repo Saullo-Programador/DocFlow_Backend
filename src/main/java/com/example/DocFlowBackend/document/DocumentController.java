@@ -129,6 +129,7 @@ public class DocumentController {
             @RequestParam(defaultValue = "") String path
     ) {
         try {
+            System.out.println("📥 PATH RECEBIDO: " + path);
 
             Path targetDir = resolveSafePath(path);
             Files.createDirectories(targetDir);
@@ -202,6 +203,32 @@ public class DocumentController {
                 }).toList();
 
         return ResponseEntity.ok(docs);
+    }
+
+    @DeleteMapping("/delete/file")
+    public ResponseEntity<Boolean> deleteFile(@RequestParam String path) throws IOException{
+        try{
+            Path safePath = resolveSafePath(path);
+
+            boolean deleted = storageService.deleteFile(safePath);
+
+            return ResponseEntity.ok(deleted);
+
+        } catch (SecurityException e) {
+            return ResponseEntity.badRequest().body( false);
+
+        }catch (Exception e) {
+            return ResponseEntity.internalServerError().body(false);
+        }
+    }
+
+    @DeleteMapping("/delete/folder")
+    public ResponseEntity<Boolean> deleteFolder(@RequestParam String path)throws IOException{
+        try {
+            return ResponseEntity.ok(storageService.deleteFolder(path));
+        } catch (Exception e){
+            return ResponseEntity.badRequest().body(false);
+        }
     }
 
     private Path resolveSafePath(String relativePath) {
