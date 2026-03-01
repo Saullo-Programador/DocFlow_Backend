@@ -1,5 +1,7 @@
-package com.example.DocFlowBackend.document;
+package com.example.DocFlowBackend.controller;
 
+import com.example.DocFlowBackend.document.DocumentResponse;
+import com.example.DocFlowBackend.document.FolderContentResponse;
 import com.example.DocFlowBackend.storage.FileStorageService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.io.UrlResource;
@@ -205,6 +207,9 @@ public class DocumentController {
         return ResponseEntity.ok(docs);
     }
 
+    // =========================================================
+    // Deletar Arquivo
+    // =========================================================
     @DeleteMapping("/delete/file")
     public ResponseEntity<Boolean> deleteFile(@RequestParam String path) throws IOException{
         try{
@@ -222,12 +227,48 @@ public class DocumentController {
         }
     }
 
+    // =========================================================
+    // Deletar Pasta
+    // =========================================================
     @DeleteMapping("/delete/folder")
     public ResponseEntity<Boolean> deleteFolder(@RequestParam String path)throws IOException{
         try {
             return ResponseEntity.ok(storageService.deleteFolder(path));
         } catch (Exception e){
             return ResponseEntity.badRequest().body(false);
+        }
+    }
+
+    // =========================================================
+    // History(Ultimos uploads Feitos)
+    // =========================================================
+    @GetMapping("/history")
+    public ResponseEntity<List<DocumentResponse>> getHistory(
+            @RequestParam(defaultValue = "50") int limit
+    ) throws IOException{
+        if (!Files.exists(rootPath)){
+            return ResponseEntity.ok(List.of());
+        }
+        String serverUrl = ServletUriComponentsBuilder
+                .fromCurrentContextPath()
+                .build()
+                .toUriString();
+
+        try (Stream<Path> stream = Files.walk(rootPath)){
+            List<DocumentResponse> files = stream
+                    .filter(Files::isRegularFile)
+                    .sorted((p1,p2) -> {
+                        try {
+                            return Files.getLastModifiedTime(p2)
+                                    .compareTo(Files.getLastModifiedTime(p1));
+                        } catch (IOException e){
+                            return 0;
+                        }
+                    })
+                    .limit(limit)
+                    .map(p-> buildDocResponse(p,serverUrl))
+                    .toList();
+            return ResponseEntity.ok(files);
         }
     }
 
