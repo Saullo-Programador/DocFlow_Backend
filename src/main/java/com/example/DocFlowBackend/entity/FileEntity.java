@@ -23,8 +23,9 @@ public class FileEntity {
     @Column(name = "folder_id")
     private Long folderId;
 
-    @Column(name = "user_id")
-    private Long userId;
+    @ManyToOne
+    @JoinColumn(name="user_id")
+    private User user;
 
     private Long size;
 

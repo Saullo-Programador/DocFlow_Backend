@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.sql.Timestamp;
+import java.util.List;
 
 @Getter
 @Setter
@@ -21,6 +22,12 @@ public class User {
     private String email;
 
     private String password;
+
+    @OneToMany(mappedBy = "user")
+    private List<Folder> folders;
+
+    @OneToMany(mappedBy = "user")
+    private List<FileEntity> files;
 
     @Column(name = "created_at")
     private Timestamp createdAt;

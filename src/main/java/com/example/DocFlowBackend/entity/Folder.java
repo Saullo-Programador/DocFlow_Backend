@@ -17,8 +17,9 @@ public class Folder {
 
     private String name;
 
-    @Column(name = "user_id")
-    private Long userId;
+    @ManyToOne
+    @JoinColumn(name="user_id")
+    private User user;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
