@@ -1,17 +1,14 @@
 package com.example.DocFlowBackend.storage;
 
-import com.example.DocFlowBackend.document.DocumentResponse;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -89,32 +86,9 @@ public class FileStorageService {
                         }
                     });
         }
-
         return true;
     }
 
-    public List<DocumentResponse> listFiles(String serverUrl) throws IOException {
-        Path root = Paths.get(uploadPath);
 
-        if (!Files.exists(root)) {
-            return List.of();
-        }
-
-        try (Stream<Path> paths = Files.list(root)) {
-            return paths
-                    .filter(Files::isRegularFile)
-                    .map(path -> {
-                        String fileName = path.getFileName().toString();
-                        String url = serverUrl + "/documents/download/" + fileName;
-
-                        return new DocumentResponse(
-                                fileName,
-                                path.toString(),
-                                url
-                        );
-                    })
-                    .toList();
-        }
-    }
 }
 

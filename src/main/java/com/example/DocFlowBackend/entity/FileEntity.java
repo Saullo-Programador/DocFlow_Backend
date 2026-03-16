@@ -3,27 +3,31 @@ package com.example.DocFlowBackend.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+
 import java.time.LocalDateTime;
 
 @Getter
 @Setter
 @Entity
-@Table(name = "folders")
-public class Folder {
-
+@Table(name = "files")
+public class FileEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String name;
 
+    @Column(name = "file_path")
+    private String filePath;
+
+    @Column(name = "folder_id")
+    private Long folderId;
+
     @Column(name = "user_id")
     private Long userId;
 
+    private Long size;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
-
-    @ManyToOne
-    @JoinColumn(name = "parent_id")
-    private Folder parent;
 }

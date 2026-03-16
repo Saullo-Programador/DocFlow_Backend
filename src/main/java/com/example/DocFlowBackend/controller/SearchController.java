@@ -1,5 +1,6 @@
 package com.example.DocFlowBackend.controller;
 
+import com.example.DocFlowBackend.dto.GlobalSearchResponse;
 import com.example.DocFlowBackend.dto.SearchResultDTO;
 import com.example.DocFlowBackend.service.SearchService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,13 +15,29 @@ import java.util.List;
 @RestController
 @RequestMapping("/search")
 public class SearchController {
-    @Autowired
-    private SearchService searchService;
+
+    private final SearchService searchService;
+
+    public SearchController(SearchService searchService) {
+        this.searchService = searchService;
+    }
 
     //Somente Arquivos
     @GetMapping("/files")
     public ResponseEntity<List<SearchResultDTO>> searchFiles(@RequestParam String query){
         return ResponseEntity.ok(searchService.searchFiles(query));
+    }
+
+    //Melhoria futura Nome da Rota
+    //Arquivos dentro da pasta
+    @GetMapping("/files-in-folder")
+    public ResponseEntity<List<SearchResultDTO>> searchFilesInFolder(
+            @RequestParam Long folderId,
+            @RequestParam String query
+    ){
+        return ResponseEntity.ok(
+                searchService.searchFilesInFolder(folderId, query)
+        );
     }
 
     //Somente Pastas
@@ -31,7 +48,11 @@ public class SearchController {
 
     //Global (Pastas e arquivos)
     @GetMapping("/global")
-    public ResponseEntity<List<SearchResultDTO>> searchGlobal(@RequestParam String query){
-        return ResponseEntity.ok(searchService.globalSearch(query));
+    public ResponseEntity<GlobalSearchResponse> searchGlobal(
+            @RequestParam String query) {
+
+        return ResponseEntity.ok(
+                searchService.searchGlobal(query)
+        );
     }
 }

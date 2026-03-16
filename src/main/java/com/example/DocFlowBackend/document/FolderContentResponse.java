@@ -1,19 +1,21 @@
 package com.example.DocFlowBackend.document;
 
+import com.example.DocFlowBackend.dto.FileResponseDTO;
+
 import java.util.List;
 
 public class FolderContentResponse {
 
     private List<String> folders;
-    private List<DocumentResponse> files;
+    private List<FileResponseDTO> files;
 
     public FolderContentResponse(
             List<String> folders,
-            List<DocumentResponse> files) {
+            List<FileResponseDTO> files) {
         this.folders = folders;
         this.files = files;
     }
 
     public List<String> getFolders() { return folders; }
-    public List<DocumentResponse> getFiles() { return files; }
+    public List<FileResponseDTO> getFiles() { return files; }
 }

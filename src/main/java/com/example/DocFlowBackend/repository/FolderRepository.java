@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface FolderRepository extends JpaRepository <Folder,Long> {
     List<Folder> findByNameContainingIgnoreCase(String name);
+    List<Folder> findByParent_Id(Long parentId);
 }

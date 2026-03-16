@@ -1,9 +1,11 @@
 package com.example.DocFlowBackend.controller;
 
-import com.example.DocFlowBackend.document.DocumentResponse;
+import com.example.DocFlowBackend.dto.FileResponseDTO;
 import com.example.DocFlowBackend.document.FolderContentResponse;
+import com.example.DocFlowBackend.dto.UploadResponseDTO;
+import com.example.DocFlowBackend.mapper.FileMapper;
+import com.example.DocFlowBackend.service.FileService;
 import com.example.DocFlowBackend.storage.FileStorageService;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.io.UrlResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -16,6 +18,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -23,59 +26,18 @@ import java.util.stream.Stream;
 
 @CrossOrigin(origins = "*")
 @RestController
-@RequestMapping("/documents")
-public class DocumentController {
+@RequestMapping("/files")
+public class FileController {
     private final FileStorageService storageService;
+    private final FileService fileService;
     private final Path rootPath;
 
-    public DocumentController(FileStorageService storageService) {
+    public FileController(FileStorageService storageService, FileService fileService) {
+        this.fileService = fileService;
         this.storageService = storageService;
         this.rootPath = Paths.get(storageService.getUploadPath())
                 .toAbsolutePath()
                 .normalize();
-    }
-
-
-    @GetMapping("/")
-    public String home() {
-        return "DocFlow Backend OK";
-    }
-
-    // =========================================================
-    // 📁 Criar pasta
-    // =========================================================
-    @PostMapping("/folders")
-    public ResponseEntity<String> createFolder(@RequestParam String path) {
-        try {
-            Path target = resolveSafePath(path);
-            Files.createDirectories(target);
-            return ResponseEntity.ok("Pasta criada");
-
-        } catch (SecurityException e) {
-            return ResponseEntity.badRequest().body("Caminho inválido");
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Erro ao criar pasta");
-        }
-    }
-
-    // =========================================================
-    // 📁 Listar pastas raiz
-    // =========================================================
-    @GetMapping("/folders")
-    public ResponseEntity<List<String>> listFolders() throws IOException {
-
-        if (!Files.exists(rootPath)) {
-            return ResponseEntity.ok(List.of());
-        }
-
-        try (Stream<Path> stream = Files.list(rootPath)) {
-            List<String> folders = stream
-                    .filter(Files::isDirectory)
-                    .map(p -> p.getFileName().toString())
-                    .toList();
-
-            return ResponseEntity.ok(folders);
-        }
     }
 
     // =========================================================
@@ -83,8 +45,7 @@ public class DocumentController {
     // =========================================================
     @GetMapping
     public ResponseEntity<FolderContentResponse> list(
-            @RequestParam(defaultValue = "") String path,
-            HttpServletRequest request
+            @RequestParam(defaultValue = "") String path
     ) throws IOException {
 
         Path target;
@@ -113,9 +74,13 @@ public class DocumentController {
                     .map(p -> p.getFileName().toString())
                     .toList();
 
-            List<DocumentResponse> files = all.stream()
+            List<FileResponseDTO> files = all.stream()
                     .filter(Files::isRegularFile)
-                    .map(p -> buildDocResponse(p, serverUrl))
+                    .map(p -> FileMapper.fromPath(
+                            p,
+                            serverUrl + "/files/download?path=" +
+                                    rootPath.relativize(p).toString().replace("\\", "/")
+                    ))
                     .toList();
 
             return ResponseEntity.ok(new FolderContentResponse(folders, files));
@@ -126,30 +91,40 @@ public class DocumentController {
     // ⬆️ Upload (com subpasta opcional)
     // =========================================================
     @PostMapping("/upload")
-    public ResponseEntity<Map<String, String>> upload(
+    public ResponseEntity<UploadResponseDTO> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam(defaultValue = "") String path
     ) {
         try {
-            System.out.println("📥 PATH RECEBIDO: " + path);
-
             Path targetDir = resolveSafePath(path);
             Files.createDirectories(targetDir);
 
             String fileName = storageService.save(file, targetDir);
 
-            return ResponseEntity.ok(Map.of(
-                    "message", "Arquivo salvo com sucesso",
-                    "fileName", fileName
-            ));
+            Path savedFile = targetDir.resolve(fileName);
+
+            fileService.saveFile(
+                    fileName,
+                    savedFile.toString(),
+                    file.getSize(),
+                    null,   // folderId
+                    1L      // userId (mock por enquanto)
+            );
+
+            return ResponseEntity.ok(
+                    new UploadResponseDTO(
+                            "Arquivo salvo com sucesso",
+                            fileName
+                    )
+            );
 
         } catch (SecurityException e) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Caminho inválido"));
+                    .body((UploadResponseDTO) Map.of("error", "Caminho inválido"));
 
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
-                    .body(Map.of("error", e.getMessage()));
+                    .body((UploadResponseDTO) Map.of("error", e.getMessage()));
         }
     }
 
@@ -179,39 +154,11 @@ public class DocumentController {
     }
 
 
-    @GetMapping("/folders/{folderName}/files")
-    public ResponseEntity<List<DocumentResponse>> listFilesInsideFolder(
-            @PathVariable String folderName,
-            HttpServletRequest request
-    ) throws IOException {
-        String serverUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
-
-        //<--- Pegar o Arquivo nos uploads --->
-        Path folderPath = Paths.get(storageService.getUploadPath(), folderName);
-
-        //<--- Verificar se Arquivo Existe --->
-        if (!Files.exists(folderPath)) return ResponseEntity.ok(List.of());
-
-        List<DocumentResponse> docs = Files
-                .list(folderPath)
-                .filter(Files::isRegularFile)
-                .map(path -> {
-                    String fileName = path.getFileName().toString();
-                    return new DocumentResponse(
-                            fileName,
-                            path.toString(),
-                            serverUrl + "/documents/download/" + fileName
-                    );
-                }).toList();
-
-        return ResponseEntity.ok(docs);
-    }
-
     // =========================================================
     // Deletar Arquivo
     // =========================================================
-    @DeleteMapping("/delete/file")
-    public ResponseEntity<Boolean> deleteFile(@RequestParam String path) throws IOException{
+    @DeleteMapping
+    public ResponseEntity<Boolean> deleteFile(@RequestParam String path){
         try{
             Path safePath = resolveSafePath(path);
 
@@ -227,15 +174,66 @@ public class DocumentController {
         }
     }
 
-    // =========================================================
-    // Deletar Pasta
-    // =========================================================
-    @DeleteMapping("/delete/folder")
-    public ResponseEntity<Boolean> deleteFolder(@RequestParam String path)throws IOException{
+    @PutMapping("/rename")
+    public ResponseEntity<Boolean> renameFile(
+            @RequestParam String path,
+            @RequestParam String newName
+    ) {
+
         try {
-            return ResponseEntity.ok(storageService.deleteFolder(path));
-        } catch (Exception e){
+
+            Path original = resolveSafePath(path);
+
+            if (!Files.exists(original)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            if (newName == null || newName.isBlank()) {
+                return ResponseEntity.badRequest().body(false);
+            }
+
+            Path newPath = original.resolveSibling(newName);
+
+            Files.move(original, newPath, StandardCopyOption.REPLACE_EXISTING);
+
+            return ResponseEntity.ok(true);
+
+        } catch (SecurityException e) {
             return ResponseEntity.badRequest().body(false);
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(false);
+        }
+    }
+
+    @PutMapping("/move")
+    public ResponseEntity<Boolean> moveFile(
+            @RequestParam String path,
+            @RequestParam String destination
+    ) {
+
+        try {
+
+            Path source = resolveSafePath(path);
+            Path targetFolder = resolveSafePath(destination);
+
+            if (!Files.exists(source)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Files.createDirectories(targetFolder);
+
+            Path target = targetFolder.resolve(source.getFileName());
+
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+
+            return ResponseEntity.ok(true);
+
+        } catch (SecurityException e) {
+            return ResponseEntity.badRequest().body(false);
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(false);
         }
     }
 
@@ -243,7 +241,7 @@ public class DocumentController {
     // History(Ultimos uploads Feitos)
     // =========================================================
     @GetMapping("/history")
-    public ResponseEntity<List<DocumentResponse>> getHistory(
+    public ResponseEntity<List<FileResponseDTO>> getHistory(
             @RequestParam(defaultValue = "50") int limit
     ) throws IOException{
         if (!Files.exists(rootPath)){
@@ -255,7 +253,7 @@ public class DocumentController {
                 .toUriString();
 
         try (Stream<Path> stream = Files.walk(rootPath)){
-            List<DocumentResponse> files = stream
+            List<FileResponseDTO> files = stream
                     .filter(Files::isRegularFile)
                     .sorted((p1,p2) -> {
                         try {
@@ -266,7 +264,11 @@ public class DocumentController {
                         }
                     })
                     .limit(limit)
-                    .map(p-> buildDocResponse(p,serverUrl))
+                    .map(p-> FileMapper.fromPath(
+                            p,
+                            serverUrl + "/files/download?path=" +
+                            rootPath.relativize(p).toString().replace("\\", "/")
+                    ))
                     .toList();
             return ResponseEntity.ok(files);
         }
@@ -283,19 +285,5 @@ public class DocumentController {
         }
 
         return target;
-    }
-
-    private DocumentResponse buildDocResponse(Path file, String serverUrl) {
-
-        String relative = rootPath
-                .relativize(file)
-                .toString()
-                .replace("\\", "/");
-
-        return new DocumentResponse(
-                file.getFileName().toString(),
-                file.toString(),
-                serverUrl + "/documents/download?path=" + relative
-        );
     }
 }

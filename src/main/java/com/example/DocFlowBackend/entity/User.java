@@ -3,13 +3,14 @@ package com.example.DocFlowBackend.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import java.time.LocalDateTime;
+
+import java.sql.Timestamp;
 
 @Getter
 @Setter
 @Entity
-@Table(name = "folders")
-public class Folder {
+@Table(name = "users")
+public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -17,13 +18,10 @@ public class Folder {
 
     private String name;
 
-    @Column(name = "user_id")
-    private Long userId;
+    private String email;
+
+    private String password;
 
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @ManyToOne
-    @JoinColumn(name = "parent_id")
-    private Folder parent;
+    private Timestamp createdAt;
 }

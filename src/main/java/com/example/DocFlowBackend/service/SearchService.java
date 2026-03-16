@@ -1,37 +1,35 @@
 package com.example.DocFlowBackend.service;
 
+import com.example.DocFlowBackend.dto.GlobalSearchResponse;
 import com.example.DocFlowBackend.dto.SearchResultDTO;
-import com.example.DocFlowBackend.entity.Document;
+import com.example.DocFlowBackend.entity.FileEntity;
 import com.example.DocFlowBackend.entity.Folder;
-import com.example.DocFlowBackend.repository.DocumentRepository;
+import com.example.DocFlowBackend.mapper.SearchMapper;
+import com.example.DocFlowBackend.repository.FileRepository;
 import com.example.DocFlowBackend.repository.FolderRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class SearchService {
 
-    @Autowired
-    private DocumentRepository documentRepository;
+    private final FileRepository documentRepository;
+    private final FolderRepository folderRepository;
 
-    @Autowired
-    private FolderRepository folderRepository;
+    public SearchService(FileRepository documentRepository, FolderRepository folderRepository) {
+        this.documentRepository = documentRepository;
+        this.folderRepository = folderRepository;
+    }
 
     // 🔵 Buscar só arquivos
     public List<SearchResultDTO> searchFiles(String query) {
 
-        List<Document> documents =
+        List<FileEntity> documents =
                 documentRepository.findByNameContainingIgnoreCase(query);
 
         return documents.stream()
-                .map(doc -> new SearchResultDTO(
-                        doc.getId(),
-                        doc.getName(),
-                        "FILE"
-                ))
+                .map(SearchMapper::fromFile)
                 .toList();
     }
 
@@ -42,22 +40,29 @@ public class SearchService {
                 folderRepository.findByNameContainingIgnoreCase(query);
 
         return folders.stream()
-                .map(folder -> new SearchResultDTO(
-                        folder.getId(),
-                        folder.getName(),
-                        "FOLDER"
-                ))
+                .map(SearchMapper::fromFolder)
                 .toList();
     }
 
-    // 🟢 Busca global
-    public List<SearchResultDTO> globalSearch(String query) {
+    public List<SearchResultDTO> searchFilesInFolder(
+            Long folderId,
+            String query
+    ){
 
-        List<SearchResultDTO> results = new ArrayList<>();
+        List<FileEntity> files =
+                documentRepository
+                        .findByFolderIdAndNameContainingIgnoreCase(folderId, query);
 
-        results.addAll(searchFiles(query));
-        results.addAll(searchFolders(query));
+        return files.stream()
+                .map(SearchMapper::fromFile)
+                .toList();
+    }
 
-        return results;
+    public GlobalSearchResponse searchGlobal(String query){
+
+        List<SearchResultDTO> files = searchFiles(query);
+        List<SearchResultDTO> folders = searchFolders(query);
+
+        return new GlobalSearchResponse(files, folders);
     }
 }
