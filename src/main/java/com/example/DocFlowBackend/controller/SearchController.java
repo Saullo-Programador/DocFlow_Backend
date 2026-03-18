@@ -25,6 +25,11 @@ public class SearchController {
     //Somente Arquivos
     @GetMapping("/files")
     public ResponseEntity<List<SearchResultDTO>> searchFiles(@RequestParam String query){
+
+        if(query == null || query.isBlank()){
+            throw new IllegalArgumentException("Query inválida");
+        }
+
         return ResponseEntity.ok(searchService.searchFiles(query));
     }
 

@@ -1,6 +1,7 @@
 package com.example.DocFlowBackend.service;
 
 import com.example.DocFlowBackend.entity.FileEntity;
+import com.example.DocFlowBackend.entity.User;
 import com.example.DocFlowBackend.repository.FileRepository;
 import org.springframework.stereotype.Service;
 
@@ -19,7 +20,7 @@ public class FileService {
             String path,
             Long size,
             Long folderId,
-            Long userId
+            User user
     ) {
 
         FileEntity file = new FileEntity();
@@ -28,7 +29,7 @@ public class FileService {
         file.setFilePath(path);
         file.setSize(size);
         file.setFolderId(folderId);
-        file.setUserId(userId);
+        file.setUser(user);
         file.setCreatedAt(LocalDateTime.now());
 
         return fileRepository.save(file);

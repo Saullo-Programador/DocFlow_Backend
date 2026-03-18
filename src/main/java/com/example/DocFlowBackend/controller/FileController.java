@@ -1,15 +1,20 @@
 package com.example.DocFlowBackend.controller;
 
+import com.example.DocFlowBackend.auth.GlobalExceptionHandler;
 import com.example.DocFlowBackend.dto.FileResponseDTO;
 import com.example.DocFlowBackend.document.FolderContentResponse;
 import com.example.DocFlowBackend.dto.UploadResponseDTO;
+import com.example.DocFlowBackend.entity.User;
 import com.example.DocFlowBackend.mapper.FileMapper;
+import com.example.DocFlowBackend.repository.UserRepository;
+import com.example.DocFlowBackend.security.SecurityUtil;
 import com.example.DocFlowBackend.service.FileService;
 import com.example.DocFlowBackend.storage.FileStorageService;
 import org.springframework.core.io.UrlResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -29,10 +34,12 @@ import java.util.stream.Stream;
 @RequestMapping("/files")
 public class FileController {
     private final FileStorageService storageService;
+    private final UserRepository userRepository;
     private final FileService fileService;
     private final Path rootPath;
 
-    public FileController(FileStorageService storageService, FileService fileService) {
+    public FileController(FileStorageService storageService, UserRepository userRepository, FileService fileService) {
+        this.userRepository = userRepository;
         this.fileService = fileService;
         this.storageService = storageService;
         this.rootPath = Paths.get(storageService.getUploadPath())
@@ -94,38 +101,40 @@ public class FileController {
     public ResponseEntity<UploadResponseDTO> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam(defaultValue = "") String path
-    ) {
-        try {
-            Path targetDir = resolveSafePath(path);
-            Files.createDirectories(targetDir);
+    ) throws IOException {
 
-            String fileName = storageService.save(file, targetDir);
-
-            Path savedFile = targetDir.resolve(fileName);
-
-            fileService.saveFile(
-                    fileName,
-                    savedFile.toString(),
-                    file.getSize(),
-                    null,   // folderId
-                    1L      // userId (mock por enquanto)
-            );
-
-            return ResponseEntity.ok(
-                    new UploadResponseDTO(
-                            "Arquivo salvo com sucesso",
-                            fileName
-                    )
-            );
-
-        } catch (SecurityException e) {
-            return ResponseEntity.badRequest()
-                    .body((UploadResponseDTO) Map.of("error", "Caminho inválido"));
-
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                    .body((UploadResponseDTO) Map.of("error", e.getMessage()));
+        if (file.isEmpty()) {
+            throw new GlobalExceptionHandler.FileStorageException("Arquivo vazio");
         }
+
+        Path targetDir = resolveSafePath(path);
+
+        try {
+            Files.createDirectories(targetDir);
+        } catch (Exception e) {
+            throw new GlobalExceptionHandler.FileStorageException("Erro ao criar diretório");
+        }
+
+        String fileName = storageService.save(file, targetDir);
+
+        Long userId = SecurityUtil.getCurrentUserId();
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException("Usuário não encontrado"));
+
+        Path savedFile = targetDir.resolve(fileName);
+
+        fileService.saveFile(
+                fileName,
+                savedFile.toString(),
+                file.getSize(),
+                null,
+                user
+        );
+
+        return ResponseEntity.ok(
+                new UploadResponseDTO("Arquivo salvo com sucesso", fileName)
+        );
     }
 
     // =========================================================
@@ -134,15 +143,10 @@ public class FileController {
     @GetMapping("/download")
     public ResponseEntity<Resource> download(@RequestParam String path) throws IOException {
 
-        Path file;
-        try {
-            file = resolveSafePath(path);
-        } catch (SecurityException e) {
-            return ResponseEntity.badRequest().build();
-        }
+        Path file = resolveSafePath(path);
 
         if (!Files.exists(file) || !Files.isRegularFile(file)) {
-            return ResponseEntity.notFound().build();
+            throw new GlobalExceptionHandler.ResourceNotFoundException("Arquivo não encontrado");
         }
 
         Resource resource = new UrlResource(file.toUri());
@@ -158,20 +162,17 @@ public class FileController {
     // Deletar Arquivo
     // =========================================================
     @DeleteMapping
-    public ResponseEntity<Boolean> deleteFile(@RequestParam String path){
-        try{
-            Path safePath = resolveSafePath(path);
+    public ResponseEntity<Void> deleteFile(@RequestParam String path) throws IOException {
 
-            boolean deleted = storageService.deleteFile(safePath);
+        Path safePath = resolveSafePath(path);
 
-            return ResponseEntity.ok(deleted);
+        boolean deleted = storageService.deleteFile(safePath);
 
-        } catch (SecurityException e) {
-            return ResponseEntity.badRequest().body( false);
-
-        }catch (Exception e) {
-            return ResponseEntity.internalServerError().body(false);
+        if (!deleted) {
+            throw new GlobalExceptionHandler.FileStorageException("Erro ao deletar arquivo");
         }
+
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/rename")
@@ -281,7 +282,7 @@ public class FileController {
                 .toAbsolutePath();
 
         if (!target.startsWith(rootPath)) {
-            throw new SecurityException("Path traversal detectado");
+            throw new GlobalExceptionHandler.InvalidPathException("Path traversal detectado");
         }
 
         return target;

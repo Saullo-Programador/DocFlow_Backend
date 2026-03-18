@@ -18,17 +18,6 @@ public class UserController {
         this.userService = userService;
     }
 
-    @PostMapping
-    public UserResponseDTO createUser(
-            @RequestParam String name,
-            @RequestParam String email,
-            @RequestParam String password
-    ) {
-        User user = userService.createUser(name, email, password);
-
-        return UserMapper.toDTO(user);
-    }
-
     @GetMapping
     public List<UserResponseDTO> listUsers() {
         return userService.listUsers()

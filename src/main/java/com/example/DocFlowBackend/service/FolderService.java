@@ -1,6 +1,7 @@
 package com.example.DocFlowBackend.service;
 
 import com.example.DocFlowBackend.entity.Folder;
+import com.example.DocFlowBackend.entity.User;
 import com.example.DocFlowBackend.repository.FolderRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -23,7 +24,7 @@ public class FolderService {
         this.folderRepository = folderRepository;
     }
 
-    public Folder createFolder(String name, Long parentId, Long userId) {
+    public Folder createFolder(String name, Long parentId, User user) {
 
         try {
 
@@ -50,7 +51,7 @@ public class FolderService {
             Folder folder = new Folder();
             folder.setName(name);
             folder.setParent(parent);
-            folder.setUserId(userId);
+            folder.setUser(user);
             folder.setCreatedAt(LocalDateTime.now());
 
             return folderRepository.save(folder);
