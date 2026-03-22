@@ -1,11 +1,12 @@
-package com.example.DocFlowBackend.auth;
+package com.example.DocFlowBackend.controller;
 
-import com.example.DocFlowBackend.dto.UserResponseDTO;
+import com.example.DocFlowBackend.dto.AuthResponseDTO;
+import com.example.DocFlowBackend.dto.LoginRequestDTO;
+import com.example.DocFlowBackend.dto.RegisterRequestDTO;
+import com.example.DocFlowBackend.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/auth")
@@ -36,10 +37,5 @@ public class AuthController {
 
         return ResponseEntity.ok(new AuthResponseDTO(token));
 
-    }
-
-    @GetMapping("/users")
-    public ResponseEntity<List<UserResponseDTO>> list(){
-        return ResponseEntity.ok(authService.list());
     }
 }

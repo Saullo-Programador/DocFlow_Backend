@@ -1,4 +1,4 @@
-package com.example.DocFlowBackend.auth;
+package com.example.DocFlowBackend.dto;
 
 public class LoginRequestDTO {
 

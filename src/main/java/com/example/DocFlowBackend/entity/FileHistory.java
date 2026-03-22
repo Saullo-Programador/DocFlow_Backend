@@ -1,9 +1,13 @@
 package com.example.DocFlowBackend.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.sql.Timestamp;
 
+@Getter
+@Setter
 @Entity
 @Table(name = "documents_history")
 public class FileHistory {

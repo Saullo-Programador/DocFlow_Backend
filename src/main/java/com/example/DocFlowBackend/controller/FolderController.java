@@ -1,11 +1,9 @@
 package com.example.DocFlowBackend.controller;
 
-import com.example.DocFlowBackend.auth.GlobalExceptionHandler;
+import com.example.DocFlowBackend.dto.FolderRequestDTO;
 import com.example.DocFlowBackend.dto.FolderResponseDTO;
 import com.example.DocFlowBackend.entity.Folder;
-import com.example.DocFlowBackend.entity.User;
 import com.example.DocFlowBackend.mapper.FolderMapper;
-import com.example.DocFlowBackend.repository.UserRepository;
 import com.example.DocFlowBackend.security.SecurityUtil;
 import com.example.DocFlowBackend.service.FolderService;
 import org.springframework.http.ResponseEntity;
@@ -19,25 +17,18 @@ import java.util.List;
 public class FolderController {
 
     private final FolderService folderService;
-    private final UserRepository userRepository;
 
-    public FolderController(FolderService folderService, UserRepository userRepository) {
+    public FolderController(FolderService folderService) {
         this.folderService = folderService;
-        this.userRepository = userRepository;
     }
 
     @PostMapping
     public ResponseEntity<FolderResponseDTO> create(
-            @RequestParam String name,
-            @RequestParam(required = false) Long parentId
+            @RequestBody FolderRequestDTO request
     ) {
 
         Long userId = SecurityUtil.getCurrentUserId();
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException("Usuário não encontrado"));
-
-        Folder folder = folderService.createFolder(name, parentId, user);
+        Folder folder = folderService.createFolder(request.getName(), request.getParentId(), userId);
 
         return ResponseEntity.ok(FolderMapper.toResponse(folder));
     }
@@ -69,13 +60,17 @@ public class FolderController {
             @PathVariable Long id,
             @RequestParam String name
     ) {
-        Folder folder = folderService.renameFolder(id, name);
+        Long userId = SecurityUtil.getCurrentUserId();
+        Folder folder = folderService.renameFolder(id, name, userId);
         return ResponseEntity.ok(FolderMapper.toResponse(folder));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        folderService.deleteFolder(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<String> delete(@PathVariable Long id) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        
+        String message = folderService.deleteFolder(id, userId);
+        
+        return ResponseEntity.ok(message);
     }
 }

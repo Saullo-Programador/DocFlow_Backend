@@ -3,7 +3,9 @@ package com.example.DocFlowBackend.controller;
 import com.example.DocFlowBackend.dto.UserResponseDTO;
 import com.example.DocFlowBackend.entity.User;
 import com.example.DocFlowBackend.mapper.UserMapper;
+import com.example.DocFlowBackend.security.SecurityUtil;
 import com.example.DocFlowBackend.service.UserService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,10 +21,19 @@ public class UserController {
     }
 
     @GetMapping
-    public List<UserResponseDTO> listUsers() {
-        return userService.listUsers()
+    public ResponseEntity<List<UserResponseDTO>> listUsers() {
+        return ResponseEntity.ok(userService.listUsers()
                 .stream()
                 .map(UserMapper::toDTO)
-                .toList();
+                .toList()
+        );
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserResponseDTO> getMe(){
+
+        Long userId = SecurityUtil.getCurrentUserId();
+
+        return ResponseEntity.ok(userService.getById(userId));
     }
 }

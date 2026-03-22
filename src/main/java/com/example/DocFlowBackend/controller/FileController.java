@@ -1,12 +1,9 @@
 package com.example.DocFlowBackend.controller;
 
-import com.example.DocFlowBackend.auth.GlobalExceptionHandler;
+import com.example.DocFlowBackend.exception.GlobalExceptionHandler;
 import com.example.DocFlowBackend.dto.FileResponseDTO;
-import com.example.DocFlowBackend.document.FolderContentResponse;
+import com.example.DocFlowBackend.dto.FolderContentResponse;
 import com.example.DocFlowBackend.dto.UploadResponseDTO;
-import com.example.DocFlowBackend.entity.User;
-import com.example.DocFlowBackend.mapper.FileMapper;
-import com.example.DocFlowBackend.repository.UserRepository;
 import com.example.DocFlowBackend.security.SecurityUtil;
 import com.example.DocFlowBackend.service.FileService;
 import com.example.DocFlowBackend.storage.FileStorageService;
@@ -14,7 +11,6 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -24,8 +20,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 
 
@@ -34,12 +31,10 @@ import java.util.stream.Stream;
 @RequestMapping("/files")
 public class FileController {
     private final FileStorageService storageService;
-    private final UserRepository userRepository;
     private final FileService fileService;
     private final Path rootPath;
 
-    public FileController(FileStorageService storageService, UserRepository userRepository, FileService fileService) {
-        this.userRepository = userRepository;
+    public FileController(FileStorageService storageService, FileService fileService) {
         this.fileService = fileService;
         this.storageService = storageService;
         this.rootPath = Paths.get(storageService.getUploadPath())
@@ -83,11 +78,22 @@ public class FileController {
 
             List<FileResponseDTO> files = all.stream()
                     .filter(Files::isRegularFile)
-                    .map(p -> FileMapper.fromPath(
-                            p,
-                            serverUrl + "/files/download?path=" +
-                                    rootPath.relativize(p).toString().replace("\\", "/")
-                    ))
+                    .map(p -> {
+                        try {
+                            return new FileResponseDTO(
+                                    null,
+                                    p.getFileName().toString(),
+                                    p.toString(),
+                                    serverUrl + "/files/download?path=" +
+                                            rootPath.relativize(p).toString().replace("\\", "/"),
+                                    Files.size(p),
+                                    LocalDateTime.ofInstant(Files.getLastModifiedTime(p).toInstant(), ZoneId.systemDefault()),
+                                    null
+                            );
+                        } catch (IOException e) {
+                            return null;
+                        }
+                    })
                     .toList();
 
             return ResponseEntity.ok(new FolderContentResponse(folders, files));
@@ -119,9 +125,6 @@ public class FileController {
 
         Long userId = SecurityUtil.getCurrentUserId();
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException("Usuário não encontrado"));
-
         Path savedFile = targetDir.resolve(fileName);
 
         fileService.saveFile(
@@ -129,7 +132,7 @@ public class FileController {
                 savedFile.toString(),
                 file.getSize(),
                 null,
-                user
+                userId
         );
 
         return ResponseEntity.ok(
@@ -162,7 +165,7 @@ public class FileController {
     // Deletar Arquivo
     // =========================================================
     @DeleteMapping
-    public ResponseEntity<Void> deleteFile(@RequestParam String path) throws IOException {
+    public ResponseEntity<String> deleteFile(@RequestParam String path) throws IOException {
 
         Path safePath = resolveSafePath(path);
 
@@ -172,7 +175,10 @@ public class FileController {
             throw new GlobalExceptionHandler.FileStorageException("Erro ao deletar arquivo");
         }
 
-        return ResponseEntity.noContent().build();
+        Long userId = SecurityUtil.getCurrentUserId();
+        String message = fileService.deleteFile(safePath.toString(), userId);
+
+        return ResponseEntity.ok(message);
     }
 
     @PutMapping("/rename")
@@ -196,6 +202,9 @@ public class FileController {
             Path newPath = original.resolveSibling(newName);
 
             Files.move(original, newPath, StandardCopyOption.REPLACE_EXISTING);
+
+            Long userId = SecurityUtil.getCurrentUserId();
+            fileService.renameFile(original.toString(), newName, newPath.toString(), userId);
 
             return ResponseEntity.ok(true);
 
@@ -228,6 +237,9 @@ public class FileController {
 
             Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
 
+            Long userId = SecurityUtil.getCurrentUserId();
+            fileService.moveFile(source.toString(), target.toString(), userId);
+
             return ResponseEntity.ok(true);
 
         } catch (SecurityException e) {
@@ -241,7 +253,7 @@ public class FileController {
     // =========================================================
     // History(Ultimos uploads Feitos)
     // =========================================================
-    @GetMapping("/history")
+    @GetMapping("/latest-uploads")
     public ResponseEntity<List<FileResponseDTO>> getHistory(
             @RequestParam(defaultValue = "50") int limit
     ) throws IOException{
@@ -265,11 +277,22 @@ public class FileController {
                         }
                     })
                     .limit(limit)
-                    .map(p-> FileMapper.fromPath(
-                            p,
-                            serverUrl + "/files/download?path=" +
-                            rootPath.relativize(p).toString().replace("\\", "/")
-                    ))
+                    .map(p -> {
+                        try {
+                            return new FileResponseDTO(
+                                    null,
+                                    p.getFileName().toString(),
+                                    p.toString(),
+                                    serverUrl + "/files/download?path=" +
+                                            rootPath.relativize(p).toString().replace("\\", "/"),
+                                    Files.size(p),
+                                    LocalDateTime.ofInstant(Files.getLastModifiedTime(p).toInstant(), ZoneId.systemDefault()),
+                                    null
+                            );
+                        } catch (IOException e) {
+                            return null;
+                        }
+                    })
                     .toList();
             return ResponseEntity.ok(files);
         }

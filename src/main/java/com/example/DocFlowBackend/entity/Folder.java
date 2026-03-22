@@ -17,6 +17,8 @@ public class Folder {
 
     private String name;
 
+    private String path; // Caminho relativo (ex: "/Financeiro/Pagamentos")
+
     @ManyToOne
     @JoinColumn(name="user_id")
     private User user;

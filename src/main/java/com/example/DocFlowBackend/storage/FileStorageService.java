@@ -85,10 +85,9 @@ public class FileStorageService {
                             throw new RuntimeException("Erro ao deletar: " + path, e);
                         }
                     });
+            return true;
+        } catch (IOException e) {
+            throw new RuntimeException("Erro ao deletar pasta: " + folderPath, e);
         }
-        return true;
     }
-
-
 }
-

@@ -1,4 +1,4 @@
-package com.example.DocFlowBackend.auth;
+package com.example.DocFlowBackend.exception;
 
 import com.example.DocFlowBackend.dto.ErrorResponse;
 import org.springframework.http.HttpStatus;

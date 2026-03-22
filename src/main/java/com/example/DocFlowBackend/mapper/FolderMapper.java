@@ -16,7 +16,9 @@ public class FolderMapper {
         return new FolderResponseDTO(
                 folder.getId(),
                 folder.getName(),
-                parentId
+                parentId,
+                folder.getCreatedAt(),
+                folder.getUser() != null ? folder.getUser().getId() : null
         );
 
     }
