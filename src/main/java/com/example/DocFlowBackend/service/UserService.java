@@ -29,4 +29,6 @@ public class UserService {
 
         return UserMapper.toDTO(user);
     }
+
+    public Long countTotalUsers (){ return userRepository.count(); }
 }

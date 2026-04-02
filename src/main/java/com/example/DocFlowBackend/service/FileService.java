@@ -61,7 +61,6 @@ public class FileService {
             saveHistory(file.getName(), "DELETE", userId);
             return "Arquivo '" + file.getName() + "' deletado com sucesso.";
         } else {
-            // Se o arquivo não existe no banco, mas foi deletado do disco, retornamos ok
             return "Arquivo deletado (registro não encontrado no banco).";
         }
     }
@@ -95,6 +94,11 @@ public class FileService {
             fileRepository.save(file);
             saveHistory(file.getName(), "MOVE", userId);
         });
+    }
+    
+    // Novo método para contar o total de arquivos no banco
+    public Long countTotalFiles() {
+        return fileRepository.count();
     }
 
     public void saveHistory(String docName, String action, Long userId) {

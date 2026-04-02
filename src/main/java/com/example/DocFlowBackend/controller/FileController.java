@@ -298,6 +298,14 @@ public class FileController {
         }
     }
 
+    // =========================================================
+    // Contagem Total de Arquivos
+    // =========================================================
+    @GetMapping("/count")
+    public ResponseEntity<Long> getCount() {
+        return ResponseEntity.ok(fileService.countTotalFiles());
+    }
+
     private Path resolveSafePath(String relativePath) {
         Path target = rootPath
                 .resolve(relativePath)

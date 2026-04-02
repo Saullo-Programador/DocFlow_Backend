@@ -9,6 +9,9 @@ import com.example.DocFlowBackend.security.JwtService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+
 @Service
 public class AuthService {
 
@@ -26,11 +29,11 @@ public class AuthService {
 
     public String login(LoginRequestDTO request){
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new GlobalExceptionHandler.InvalidCredentialsException("Email ou senha inválidos"));
+        User user = userRepository.findByName(request.getName()) // Alterado de findByEmail para findByName
+                .orElseThrow(() -> new GlobalExceptionHandler.InvalidCredentialsException("Nome de usuário ou senha inválidos"));
 
         if(!passwordEncoder.matches(request.getPassword(), user.getPassword())){
-            throw new GlobalExceptionHandler.InvalidCredentialsException("Email ou senha inválidos");
+            throw new GlobalExceptionHandler.InvalidCredentialsException("Nome de usuário ou senha inválidos");
         }
 
         // Agora usando ID no token
@@ -48,14 +51,17 @@ public class AuthService {
             throw new GlobalExceptionHandler.InvalidCredentialsException("Senha deve ter pelo menos 6 caracteres");
         }
 
-        if(userRepository.findByEmail(request.getEmail()).isPresent()){
-            throw new GlobalExceptionHandler.UserAlreadyExistsException("Usuário já existente");
+        // Também é bom verificar se o nome de usuário já existe, se ele será usado para login
+        if(userRepository.findByName(request.getName()).isPresent()){
+            throw new GlobalExceptionHandler.UserAlreadyExistsException("Nome de usuário já existente");
         }
 
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRole(request.getRole()); // Cargo salvo aqui
+        user.setCreatedAt(Timestamp.valueOf(LocalDateTime.now()));
 
         userRepository.save(user);
 

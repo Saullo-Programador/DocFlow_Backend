@@ -23,6 +23,8 @@ public class User {
 
     private String password;
 
+    private String role; // Cargo do usuário (ex: Administrador, Financeiro, etc.)
+
     @OneToMany(mappedBy = "user")
     private List<Folder> folders;
 

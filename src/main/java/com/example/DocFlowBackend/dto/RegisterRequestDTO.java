@@ -5,6 +5,7 @@ public class RegisterRequestDTO {
     private String name;
     private String email;
     private String password;
+    private String role; // Cargo do usuário
 
     public String getName() {
         return name;
@@ -30,4 +31,11 @@ public class RegisterRequestDTO {
         this.password = password;
     }
 
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
 }

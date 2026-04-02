@@ -36,4 +36,7 @@ public class UserController {
 
         return ResponseEntity.ok(userService.getById(userId));
     }
+
+    @GetMapping("/count")
+    public ResponseEntity<Long> getCount(){ return ResponseEntity.ok(userService.countTotalUsers());};
 }

@@ -73,4 +73,7 @@ public class FolderController {
         
         return ResponseEntity.ok(message);
     }
+
+    @GetMapping("/count")
+    public ResponseEntity<Long> getCount(){ return ResponseEntity.ok(folderService.countTotalFolder());}
 }
