@@ -1,9 +1,12 @@
 package com.example.DocFlowBackend.service;
 
+import com.example.DocFlowBackend.dto.AuthResponseDTO;
 import com.example.DocFlowBackend.dto.LoginRequestDTO;
 import com.example.DocFlowBackend.dto.RegisterRequestDTO;
+import com.example.DocFlowBackend.dto.UserResponseDTO;
 import com.example.DocFlowBackend.entity.User;
 import com.example.DocFlowBackend.exception.GlobalExceptionHandler;
+import com.example.DocFlowBackend.mapper.UserMapper;
 import com.example.DocFlowBackend.repository.UserRepository;
 import com.example.DocFlowBackend.security.JwtService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -27,22 +30,24 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    public String login(LoginRequestDTO request){
+    public AuthResponseDTO login(LoginRequestDTO request){
 
-        User user = userRepository.findByName(request.getName()) // Alterado de findByEmail para findByName
+        User user = userRepository.findByName(request.getName())
                 .orElseThrow(() -> new GlobalExceptionHandler.InvalidCredentialsException("Nome de usuário ou senha inválidos"));
 
         if(!passwordEncoder.matches(request.getPassword(), user.getPassword())){
             throw new GlobalExceptionHandler.InvalidCredentialsException("Nome de usuário ou senha inválidos");
         }
 
-        // Agora usando ID no token
-        return jwtService.generateToken(user.getId().toString());
+        String accessToken = jwtService.generateAccessToken(user.getId().toString());
+        String refreshToken = jwtService.generateRefreshToken(user.getId().toString());
+        UserResponseDTO userDTO = UserMapper.toDTO(user);
+
+        return new AuthResponseDTO(accessToken, refreshToken, userDTO);
     }
 
-    public String register(RegisterRequestDTO request){
+    public AuthResponseDTO register(RegisterRequestDTO request){
 
-        // validação básica
         if(request.getEmail() == null || request.getEmail().isBlank()){
             throw new GlobalExceptionHandler.InvalidCredentialsException("Email inválido");
         }
@@ -51,7 +56,6 @@ public class AuthService {
             throw new GlobalExceptionHandler.InvalidCredentialsException("Senha deve ter pelo menos 6 caracteres");
         }
 
-        // Também é bom verificar se o nome de usuário já existe, se ele será usado para login
         if(userRepository.findByName(request.getName()).isPresent()){
             throw new GlobalExceptionHandler.UserAlreadyExistsException("Nome de usuário já existente");
         }
@@ -60,13 +64,31 @@ public class AuthService {
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(request.getRole()); // Cargo salvo aqui
+        user.setRole(request.getRole());
         user.setCreatedAt(Timestamp.valueOf(LocalDateTime.now()));
 
         userRepository.save(user);
 
-        return jwtService.generateToken(user.getId().toString());
+        String accessToken = jwtService.generateAccessToken(user.getId().toString());
+        String refreshToken = jwtService.generateRefreshToken(user.getId().toString());
+        UserResponseDTO userDTO = UserMapper.toDTO(user);
+
+        return new AuthResponseDTO(accessToken, refreshToken, userDTO);
     }
 
+    public AuthResponseDTO refreshToken(String refreshToken) {
+        if (jwtService.isTokenExpired(refreshToken)) {
+            throw new GlobalExceptionHandler.InvalidCredentialsException("Refresh Token expirado");
+        }
 
+        String userId = jwtService.extractSubject(refreshToken);
+        User user = userRepository.findById(Long.parseLong(userId))
+                .orElseThrow(() -> new GlobalExceptionHandler.UserNotFoundException("Usuário não encontrado"));
+
+        String newAccessToken = jwtService.generateAccessToken(user.getId().toString());
+        String newRefreshToken = jwtService.generateRefreshToken(user.getId().toString());
+        UserResponseDTO userDTO = UserMapper.toDTO(user);
+
+        return new AuthResponseDTO(newAccessToken, newRefreshToken, userDTO);
+    }
 }

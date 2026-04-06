@@ -2,11 +2,10 @@ package com.example.DocFlowBackend.controller;
 
 import com.example.DocFlowBackend.dto.FileHistoryResponseDTO;
 import com.example.DocFlowBackend.repository.FileHistoryRepository;
+import com.example.DocFlowBackend.repository.UserRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -16,23 +15,34 @@ import java.util.List;
 public class FileHistoryController {
 
     private final FileHistoryRepository historyRepository;
+    private final UserRepository userRepository;
 
-    public FileHistoryController(FileHistoryRepository historyRepository) {
+    public FileHistoryController(FileHistoryRepository historyRepository, UserRepository userRepository) {
         this.historyRepository = historyRepository;
+        this.userRepository = userRepository;
     }
 
     @GetMapping
-    public ResponseEntity<List<FileHistoryResponseDTO>> getHistory() {
+    public ResponseEntity<List<FileHistoryResponseDTO>> getHistory(
+            @RequestParam(defaultValue = "10") int limit
+    ) {
         return ResponseEntity.ok(
-                historyRepository.findAll()
+                historyRepository.findRecentActivities(PageRequest.of(0, limit))
                         .stream()
-                        .map(h -> new FileHistoryResponseDTO(
-                                h.getId(),
-                                h.getDocumentName(),
-                                h.getAction(),
-                                h.getUserId(),
-                                h.getCreatedAt()
-                        ))
+                        .map(h -> {
+                            String userName = userRepository.findById(h.getUserId())
+                                    .map(u -> u.getName())
+                                    .orElse("Desconhecido");
+
+                            return new FileHistoryResponseDTO(
+                                    h.getId(),
+                                    h.getDocumentName(),
+                                    h.getAction(),
+                                    h.getUserId(),
+                                    userName,
+                                    h.getCreatedAt()
+                            );
+                        })
                         .toList()
         );
     }

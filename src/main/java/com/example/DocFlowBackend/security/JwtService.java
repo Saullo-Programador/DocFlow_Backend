@@ -8,6 +8,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.security.Key;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Function;
 
 @Service
 public class JwtService {
@@ -15,17 +18,33 @@ public class JwtService {
     @Value("${jwt.secret}")
     private String SECRET;
 
+    // Tempo de expiração do Access Token (24 horas)
+    private final long ACCESS_TOKEN_EXPIRATION = 86400000; // 24h
+
+    // Tempo de expiração do Refresh Token (7 dias)
+    private final long REFRESH_TOKEN_EXPIRATION = 604800000; // 7 dias
+
     private Key getKey() {
         return Keys.hmacShaKeyFor(SECRET.getBytes());
     }
 
-    // ================= GERAR TOKEN =================
-    public String generateToken(String subject){
+    // ================= GERAR ACCESS TOKEN =================
+    public String generateAccessToken(String subject){
+        return generateToken(subject, ACCESS_TOKEN_EXPIRATION);
+    }
 
+    // ================= GERAR REFRESH TOKEN =================
+    public String generateRefreshToken(String subject){
+        return generateToken(subject, REFRESH_TOKEN_EXPIRATION);
+    }
+
+    private String generateToken(String subject, long expirationTime){
+        Map<String, Object> claims = new HashMap<>();
         return Jwts.builder()
-                .setSubject(subject) // pode ser ID
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 86400000)) // 24h
+                .setClaims(claims)
+                .setSubject(subject)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + expirationTime))
                 .signWith(getKey())
                 .compact();
     }
@@ -39,15 +58,23 @@ public class JwtService {
                 .getBody();
     }
 
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = extractAllClaims(token);
+        return claimsResolver.apply(claims);
+    }
+
     // ================= SUBJECT =================
     public String extractSubject(String token) {
-        return extractAllClaims(token).getSubject();
+        return extractClaim(token, Claims::getSubject);
     }
 
     // ================= EXPIRAÇÃO =================
+    public Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
+
     public boolean isTokenExpired(String token){
-        Date expiration = extractAllClaims(token).getExpiration();
-        return expiration.before(new Date());
+        return extractExpiration(token).before(new Date());
     }
 
     // ================= VALIDAÇÃO =================

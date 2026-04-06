@@ -2,6 +2,7 @@ package com.example.DocFlowBackend.controller;
 
 import com.example.DocFlowBackend.dto.AuthResponseDTO;
 import com.example.DocFlowBackend.dto.LoginRequestDTO;
+import com.example.DocFlowBackend.dto.RefreshTokenRequestDTO;
 import com.example.DocFlowBackend.dto.RegisterRequestDTO;
 import com.example.DocFlowBackend.service.AuthService;
 import jakarta.validation.Valid;
@@ -23,19 +24,20 @@ public class AuthController {
     public ResponseEntity<AuthResponseDTO> login(
             @RequestBody LoginRequestDTO request
     ){
-
-         String token = authService.login(request);
-
-        return ResponseEntity.ok(new AuthResponseDTO(token));
+        return ResponseEntity.ok(authService.login(request));
     }
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponseDTO> register(
             @RequestBody @Valid RegisterRequestDTO request
     ){
-        String token = authService.register(request);
+        return ResponseEntity.ok(authService.register(request));
+    }
 
-        return ResponseEntity.ok(new AuthResponseDTO(token));
-
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponseDTO> refresh(
+            @RequestBody RefreshTokenRequestDTO request
+    ) {
+        return ResponseEntity.ok(authService.refreshToken(request.getRefreshToken()));
     }
 }
