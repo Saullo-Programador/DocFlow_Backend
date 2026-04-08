@@ -1,11 +1,11 @@
 package com.example.DocFlowBackend.controller;
 
 import com.example.DocFlowBackend.dto.UserResponseDTO;
-import com.example.DocFlowBackend.entity.User;
 import com.example.DocFlowBackend.mapper.UserMapper;
 import com.example.DocFlowBackend.security.SecurityUtil;
 import com.example.DocFlowBackend.service.UserService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,6 +21,7 @@ public class UserController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')") // Restrição de negócio
     public ResponseEntity<List<UserResponseDTO>> listUsers() {
         return ResponseEntity.ok(userService.listUsers()
                 .stream()
@@ -31,12 +32,13 @@ public class UserController {
 
     @GetMapping("/me")
     public ResponseEntity<UserResponseDTO> getMe(){
-
         Long userId = SecurityUtil.getCurrentUserId();
-
         return ResponseEntity.ok(userService.getById(userId));
     }
 
     @GetMapping("/count")
-    public ResponseEntity<Long> getCount(){ return ResponseEntity.ok(userService.countTotalUsers());};
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public ResponseEntity<Long> getCount(){ 
+        return ResponseEntity.ok(userService.countTotalUsers());
+    }
 }

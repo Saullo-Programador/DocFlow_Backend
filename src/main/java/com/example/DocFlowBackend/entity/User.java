@@ -1,5 +1,6 @@
 package com.example.DocFlowBackend.entity;
 
+import com.example.DocFlowBackend.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -19,11 +20,13 @@ public class User {
 
     private String name;
 
+    @Column(unique = true)
     private String email;
 
     private String password;
 
-    private String role; // Cargo do usuário (ex: Administrador, Financeiro, etc.)
+    @Enumerated(EnumType.STRING)
+    private UserRole role; // ADMIN, MANAGER, EMPLOYEE
 
     @OneToMany(mappedBy = "user")
     private List<Folder> folders;

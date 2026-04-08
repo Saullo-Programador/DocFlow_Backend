@@ -6,7 +6,6 @@ import com.example.DocFlowBackend.entity.User;
 import com.example.DocFlowBackend.repository.FolderRepository;
 import com.example.DocFlowBackend.repository.UserRepository;
 import com.example.DocFlowBackend.storage.FileStorageService;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,8 +21,8 @@ public class FolderService {
 
     private final FolderRepository folderRepository;
     private final UserRepository userRepository;
-    private final FileService fileService; // Para histórico
-    private final FileStorageService storageService; // Para criar pasta física
+    private final FileService fileService; 
+    private final FileStorageService storageService;
 
     public FolderService(FolderRepository folderRepository, UserRepository userRepository, FileService fileService, FileStorageService storageService) {
         this.folderRepository = folderRepository;
@@ -42,18 +41,13 @@ public class FolderService {
         if (parentId != null) {
             parent = folderRepository.findById(parentId)
                     .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException("Pasta pai não encontrada"));
-            
-            // Assume que o pai já tem o path correto (se for antigo e nulo, usa o nome)
             String parentPath = (parent.getPath() != null) ? parent.getPath() : ("/" + parent.getName());
             relativePath = parentPath + "/" + name;
         } else {
             relativePath = "/" + name;
         }
 
-        // Criar pasta física
         Path rootUploadPath = Paths.get(storageService.getUploadPath()).toAbsolutePath().normalize();
-        
-        // Remove a barra inicial para evitar problemas com resolve (se houver)
         String safeRelativePath = relativePath.startsWith("/") ? relativePath.substring(1) : relativePath;
         Path folderPath = rootUploadPath.resolve(safeRelativePath);
 
@@ -65,26 +59,20 @@ public class FolderService {
 
         Folder folder = new Folder();
         folder.setName(name);
-        folder.setPath(relativePath); // Salva o caminho no banco
+        folder.setPath(relativePath);
         folder.setParent(parent);
         folder.setUser(user);
         folder.setCreatedAt(LocalDateTime.now());
 
         Folder savedFolder = folderRepository.save(folder);
-
         fileService.saveHistory(name, "FOLDER_CREATE", userId);
-
         return savedFolder;
     }
 
-    public List<Folder> listFolders() {
-        return folderRepository.findAll();
-    }
+    public List<Folder> listFolders() { return folderRepository.findAll(); }
+    public List<Folder> getSubFolders(Long parentId) { return folderRepository.findByParent_Id(parentId); }
 
-    public List<Folder> getSubFolders(Long parentId) {
-        return folderRepository.findByParent_Id(parentId);
-    }
-
+    @Transactional
     public Folder renameFolder(Long folderId, String newName, Long userId) {
         Folder folder = folderRepository.findById(folderId)
                 .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException("Pasta não encontrada"));
@@ -92,13 +80,10 @@ public class FolderService {
         String oldName = folder.getName();
         String oldPath = folder.getPath();
         
-        String parentPath = (folder.getParent() != null && folder.getParent().getPath() != null) 
-                ? folder.getParent().getPath() 
-                : ""; 
-        
-        String newRelativePath = parentPath + "/" + newName;
-        if(parentPath.isEmpty()) newRelativePath = "/" + newName;
+        String parentPath = (folder.getParent() != null && folder.getParent().getPath() != null) ? folder.getParent().getPath() : ""; 
+        String newRelativePath = parentPath.isEmpty() ? "/" + newName : parentPath + "/" + newName;
 
+        // 1. Sincronização Física (Disco)
         Path rootUploadPath = Paths.get(storageService.getUploadPath()).toAbsolutePath().normalize();
         Path oldDir = rootUploadPath.resolve(oldPath.startsWith("/") ? oldPath.substring(1) : oldPath);
         Path newDir = rootUploadPath.resolve(newRelativePath.startsWith("/") ? newRelativePath.substring(1) : newRelativePath);
@@ -111,14 +96,29 @@ public class FolderService {
              throw new GlobalExceptionHandler.FileStorageException("Erro ao renomear pasta no disco: " + e.getMessage());
         }
 
+        // 2. Sincronização Lógica (Banco - Recursiva para filhos)
+        updatePathsRecursively(folder, oldPath, newRelativePath);
+        
         folder.setName(newName);
         folder.setPath(newRelativePath);
-        
         Folder savedFolder = folderRepository.save(folder);
 
         fileService.saveHistory(oldName, "FOLDER_RENAME -> " + newName, userId);
-
         return savedFolder;
+    }
+
+    private void updatePathsRecursively(Folder folder, String oldPathPrefix, String newPathPrefix) {
+        // Atualiza arquivos dentro desta pasta
+        fileService.updateFilesPathInFolder(folder.getId(), oldPathPrefix, newPathPrefix);
+
+        // Busca subpastas e atualiza recursivamente
+        List<Folder> subFolders = folderRepository.findByParent_Id(folder.getId());
+        for (Folder sub : subFolders) {
+            String newSubPath = sub.getPath().replaceFirst(oldPathPrefix, newPathPrefix);
+            sub.setPath(newSubPath);
+            folderRepository.save(sub);
+            updatePathsRecursively(sub, oldPathPrefix, newPathPrefix);
+        }
     }
 
     @Transactional
@@ -126,53 +126,29 @@ public class FolderService {
         Folder folder = folderRepository.findById(folderId)
                 .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException("Pasta não encontrada"));
 
-        String folderName = folder.getName(); // Guardar nome para histórico
-
-        // 1. Deletar Fisicamente (apaga tudo dentro do disco)
+        String folderName = folder.getName(); 
         String path = folder.getPath();
+
         if(path != null && !path.isBlank()){
              try {
                 String safePath = path.startsWith("/") ? path.substring(1) : path;
-                boolean deleted = storageService.deleteFolder(safePath);
-                
-                // Se o diretório existe e não foi possível deletar
-                Path physicalPath = Paths.get(storageService.getUploadPath()).resolve(safePath);
-                if (Files.exists(physicalPath) && !deleted) {
-                    throw new GlobalExceptionHandler.FileStorageException("Falha ao remover o diretório físico.");
-                }
-
+                storageService.deleteFolder(safePath);
             } catch (IOException e) {
-                e.printStackTrace();
-                throw new GlobalExceptionHandler.FileStorageException("Erro de I/O ao apagar pasta do disco: " + e.getMessage());
+                throw new GlobalExceptionHandler.FileStorageException("Erro ao deletar pasta do disco: " + e.getMessage());
             }
         }
         
-        // 2. Limpar Banco de Dados Recursivamente
-        try {
-            deleteFolderRecursive(folder, userId);
-        } catch (Exception e) {
-            throw new RuntimeException("Erro ao limpar registros do banco: " + e.getMessage());
-        }
-
-        // 3. Salvar histórico da ação principal
+        deleteFolderRecursive(folder, userId);
         fileService.saveHistory(folderName, "FOLDER_DELETE", userId);
-
-        return "Pasta '" + folderName + "' e todo seu conteúdo foram deletados com sucesso.";
+        return "Pasta '" + folderName + "' deletada com sucesso.";
     }
 
     private void deleteFolderRecursive(Folder currentFolder, Long userId) {
-        // Encontrar subpastas
         List<Folder> subFolders = folderRepository.findByParent_Id(currentFolder.getId());
-
-        // Recursão para deletar subpastas primeiro
         for (Folder sub : subFolders) {
             deleteFolderRecursive(sub, userId);
         }
-
-        // Deletar arquivos desta pasta
         fileService.deleteFilesByFolderId(currentFolder.getId(), userId);
-
-        // Deletar a pasta em si
         folderRepository.delete(currentFolder);
     }
 
