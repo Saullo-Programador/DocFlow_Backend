@@ -16,10 +16,8 @@ import java.util.stream.Stream;
 @Service
 public class FileStorageService {
     //local
-    @Value("${docflow.win.path}")
-    //service
-    //@Value("${docflow.upload.path}")
-    private String uploadPath;
+    @Value("${storage.path}")
+    private String storagePath;
 
 
     public String save(MultipartFile file, Path targetDir) throws IOException {
@@ -69,7 +67,7 @@ public class FileStorageService {
     }
 
     public boolean deleteFolder(String folderPath) throws IOException {
-        Path dir = Paths.get(uploadPath).resolve(folderPath);
+        Path dir = Paths.get(storagePath).resolve(folderPath);
 
         if (!Files.exists(dir)) {
             return false;

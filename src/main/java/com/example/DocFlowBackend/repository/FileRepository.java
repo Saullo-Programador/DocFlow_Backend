@@ -1,6 +1,7 @@
 package com.example.DocFlowBackend.repository;
 
 import com.example.DocFlowBackend.entity.FileEntity;
+import com.example.DocFlowBackend.enums.FileStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -13,7 +14,11 @@ public interface FileRepository extends JpaRepository<FileEntity, Long> {
             String name
     );
     Optional<FileEntity> findByFilePath(String filePath);
-    
-    // Novo método para encontrar todos arquivos de uma pasta
     List<FileEntity> findByFolderId(Long folderId);
+    
+    // Busca arquivos por pasta e status (ex: ATIVO)
+    List<FileEntity> findByFolderIdAndStatus(Long folderId, FileStatus status);
+    
+    // Busca todos com status pendente
+    List<FileEntity> findByStatus(FileStatus status);
 }

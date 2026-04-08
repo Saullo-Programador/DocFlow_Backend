@@ -18,28 +18,24 @@ public class JwtService {
     @Value("${jwt.secret}")
     private String SECRET;
 
-    // Tempo de expiração do Access Token (24 horas)
     private final long ACCESS_TOKEN_EXPIRATION = 86400000; // 24h
-
-    // Tempo de expiração do Refresh Token (7 dias)
     private final long REFRESH_TOKEN_EXPIRATION = 604800000; // 7 dias
 
     private Key getKey() {
         return Keys.hmacShaKeyFor(SECRET.getBytes());
     }
 
-    // ================= GERAR ACCESS TOKEN =================
-    public String generateAccessToken(String subject){
-        return generateToken(subject, ACCESS_TOKEN_EXPIRATION);
-    }
-
-    // ================= GERAR REFRESH TOKEN =================
-    public String generateRefreshToken(String subject){
-        return generateToken(subject, REFRESH_TOKEN_EXPIRATION);
-    }
-
-    private String generateToken(String subject, long expirationTime){
+    public String generateAccessToken(String subject, String role){
         Map<String, Object> claims = new HashMap<>();
+        claims.put("role", role); // Inclui a role no payload
+        return generateToken(subject, claims, ACCESS_TOKEN_EXPIRATION);
+    }
+
+    public String generateRefreshToken(String subject){
+        return generateToken(subject, new HashMap<>(), REFRESH_TOKEN_EXPIRATION);
+    }
+
+    private String generateToken(String subject, Map<String, Object> claims, long expirationTime){
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(subject)
@@ -49,7 +45,6 @@ public class JwtService {
                 .compact();
     }
 
-    // ================= EXTRAIR CLAIMS =================
     private Claims extractAllClaims(String token){
         return Jwts.parserBuilder()
                 .setSigningKey(getKey())
@@ -63,12 +58,14 @@ public class JwtService {
         return claimsResolver.apply(claims);
     }
 
-    // ================= SUBJECT =================
     public String extractSubject(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
-    // ================= EXPIRAÇÃO =================
+    public String extractRole(String token) {
+        return (String) extractAllClaims(token).get("role");
+    }
+
     public Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
     }
@@ -77,7 +74,6 @@ public class JwtService {
         return extractExpiration(token).before(new Date());
     }
 
-    // ================= VALIDAÇÃO =================
     public boolean isTokenValid(String token){
         try {
             return !isTokenExpired(token);

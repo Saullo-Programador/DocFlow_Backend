@@ -1,5 +1,6 @@
 package com.example.DocFlowBackend.entity;
 
+import com.example.DocFlowBackend.enums.FileStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -31,4 +32,7 @@ public class FileEntity {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @Enumerated(EnumType.STRING)
+    private FileStatus status = FileStatus.ACTIVE; // Default: ACTIVE
 }

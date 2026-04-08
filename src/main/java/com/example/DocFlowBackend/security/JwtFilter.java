@@ -6,12 +6,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
@@ -38,23 +40,26 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String token = header.replace("Bearer ", "");
 
-        // 🔥 valida o token
         if (!jwtService.isTokenValid(token)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // aqui agora pode ser ID ou email (depende do seu JWT)
         String subject = jwtService.extractSubject(token);
+        String role = jwtService.extractRole(token); // Extrai a Role
 
-        // 🔥 evita sobrescrever autenticação existente
         if (subject != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+
+            // Cria autoridade baseada na role do token
+            List<SimpleGrantedAuthority> authorities = Collections.singletonList(
+                    new SimpleGrantedAuthority("ROLE_" + role)
+            );
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
                             subject,
                             null,
-                            Collections.emptyList()
+                            authorities
                     );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);

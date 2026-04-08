@@ -20,6 +20,11 @@ public class AuthController {
         this.authService = authService;
     }
 
+    @GetMapping("/")
+    public String start(){
+        return "Backend Rodando ";
+    }
+
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(
             @RequestBody LoginRequestDTO request

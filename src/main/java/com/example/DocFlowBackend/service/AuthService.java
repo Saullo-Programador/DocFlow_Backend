@@ -5,6 +5,7 @@ import com.example.DocFlowBackend.dto.LoginRequestDTO;
 import com.example.DocFlowBackend.dto.RegisterRequestDTO;
 import com.example.DocFlowBackend.dto.UserResponseDTO;
 import com.example.DocFlowBackend.entity.User;
+import com.example.DocFlowBackend.enums.UserRole;
 import com.example.DocFlowBackend.exception.GlobalExceptionHandler;
 import com.example.DocFlowBackend.mapper.UserMapper;
 import com.example.DocFlowBackend.repository.UserRepository;
@@ -39,7 +40,7 @@ public class AuthService {
             throw new GlobalExceptionHandler.InvalidCredentialsException("Nome de usuário ou senha inválidos");
         }
 
-        String accessToken = jwtService.generateAccessToken(user.getId().toString());
+        String accessToken = jwtService.generateAccessToken(user.getId().toString(), user.getRole().name());
         String refreshToken = jwtService.generateRefreshToken(user.getId().toString());
         UserResponseDTO userDTO = UserMapper.toDTO(user);
 
@@ -64,12 +65,12 @@ public class AuthService {
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(request.getRole());
+        user.setRole(UserRole.valueOf(request.getRole().toUpperCase()));
         user.setCreatedAt(Timestamp.valueOf(LocalDateTime.now()));
 
         userRepository.save(user);
 
-        String accessToken = jwtService.generateAccessToken(user.getId().toString());
+        String accessToken = jwtService.generateAccessToken(user.getId().toString(), user.getRole().name());
         String refreshToken = jwtService.generateRefreshToken(user.getId().toString());
         UserResponseDTO userDTO = UserMapper.toDTO(user);
 
@@ -85,7 +86,7 @@ public class AuthService {
         User user = userRepository.findById(Long.parseLong(userId))
                 .orElseThrow(() -> new GlobalExceptionHandler.UserNotFoundException("Usuário não encontrado"));
 
-        String newAccessToken = jwtService.generateAccessToken(user.getId().toString());
+        String newAccessToken = jwtService.generateAccessToken(user.getId().toString(), user.getRole().name());
         String newRefreshToken = jwtService.generateRefreshToken(user.getId().toString());
         UserResponseDTO userDTO = UserMapper.toDTO(user);
 
