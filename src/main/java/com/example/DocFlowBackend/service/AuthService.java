@@ -57,9 +57,14 @@ public class AuthService {
             throw new GlobalExceptionHandler.InvalidCredentialsException("Senha deve ter pelo menos 6 caracteres");
         }
 
+        if(request.getRole() == null || request.getRole().isBlank()){
+            throw new GlobalExceptionHandler.InvalidCredentialsException("Cargo inválido");
+        }
+
         if(userRepository.findByName(request.getName()).isPresent()){
             throw new GlobalExceptionHandler.UserAlreadyExistsException("Nome de usuário já existente");
         }
+
 
         User user = new User();
         user.setName(request.getName());
