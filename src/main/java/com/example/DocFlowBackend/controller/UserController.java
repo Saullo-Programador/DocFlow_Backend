@@ -41,4 +41,10 @@ public class UserController {
     public ResponseEntity<Long> getCount(){ 
         return ResponseEntity.ok(userService.countTotalUsers());
     }
+
+    @DeleteMapping("/deleteUser")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public ResponseEntity<UserResponseDTO> deleteUser(@RequestParam String userId){
+        return ResponseEntity.ok(userService.deleteUser(userId));
+    }
 }

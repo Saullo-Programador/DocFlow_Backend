@@ -1,5 +1,6 @@
 package com.example.DocFlowBackend.service;
 
+import com.example.DocFlowBackend.dto.AuthResponseDTO;
 import com.example.DocFlowBackend.dto.UserResponseDTO;
 import com.example.DocFlowBackend.entity.User;
 import com.example.DocFlowBackend.exception.GlobalExceptionHandler;
@@ -31,4 +32,13 @@ public class UserService {
     }
 
     public Long countTotalUsers (){ return userRepository.count(); }
+
+    public UserResponseDTO deleteUser(String userId){
+        User user = userRepository.findById(Long.parseLong(userId))
+                .orElseThrow(() -> new GlobalExceptionHandler.UserNotFoundException("Usuário não encontrado"));
+
+        userRepository.delete(user);
+
+        return new UserResponseDTO(user.getId(), user.getName(), user.getEmail(), user.getRole());
+    }
 }
