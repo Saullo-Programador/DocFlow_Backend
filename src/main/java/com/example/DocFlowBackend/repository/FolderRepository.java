@@ -10,4 +10,6 @@ public interface FolderRepository extends JpaRepository <Folder,Long> {
     List<Folder> findByNameContainingIgnoreCase(String name);
     List<Folder> findByParent_Id(Long parentId);
     Optional<Folder> findByPath(String path); // Busca pasta pelo caminho relativo
+
+    List<Folder> findByParentIsNull();
 }

@@ -45,6 +45,11 @@ public class JwtFilter extends OncePerRequestFilter {
             return;
         }
 
+        if (request.getMethod().equals("OPTIONS")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String subject = jwtService.extractSubject(token);
         String role = jwtService.extractRole(token); // Extrai a Role
 

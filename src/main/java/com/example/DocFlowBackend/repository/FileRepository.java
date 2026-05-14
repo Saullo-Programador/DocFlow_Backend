@@ -21,4 +21,8 @@ public interface FileRepository extends JpaRepository<FileEntity, Long> {
     
     // Busca todos com status pendente
     List<FileEntity> findByStatus(FileStatus status);
+
+    List<FileEntity> findByFolderIdIsNull();
+
+    Long countByStatus (FileStatus status);
 }

@@ -35,4 +35,5 @@ public class FileEntity {
 
     @Enumerated(EnumType.STRING)
     private FileStatus status = FileStatus.ACTIVE; // Default: ACTIVE
+
 }

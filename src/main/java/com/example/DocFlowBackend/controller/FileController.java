@@ -33,7 +33,7 @@ import java.util.Optional;
 
 @CrossOrigin(origins = "*")
 @RestController
-@RequestMapping("/files")
+@RequestMapping("/documents/files")
 public class FileController {
     private final FileStorageService storageService;
     private final FileService fileService;

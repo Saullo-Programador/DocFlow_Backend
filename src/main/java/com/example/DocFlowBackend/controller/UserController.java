@@ -33,7 +33,8 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<UserResponseDTO> getMe(){
         Long userId = SecurityUtil.getCurrentUserId();
-        return ResponseEntity.ok(userService.getById(userId));
+        UserResponseDTO user = userService.getById(userId);
+        return ResponseEntity.ok(user);
     }
 
     @GetMapping("/count")
