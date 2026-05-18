@@ -69,7 +69,7 @@ public class FolderController {
         return ResponseEntity.ok(FolderMapper.toResponse(folder));
     }
 
-    @DeleteMapping("/delete/folder")
+    @DeleteMapping("/delete")
     public ResponseEntity<String> deleteByPath(
             @RequestParam String path
     ) {

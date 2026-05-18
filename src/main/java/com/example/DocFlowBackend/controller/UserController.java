@@ -1,5 +1,6 @@
 package com.example.DocFlowBackend.controller;
 
+import com.example.DocFlowBackend.dto.UpdateUserRequestDTO;
 import com.example.DocFlowBackend.dto.UserResponseDTO;
 import com.example.DocFlowBackend.mapper.UserMapper;
 import com.example.DocFlowBackend.security.SecurityUtil;
@@ -47,5 +48,13 @@ public class UserController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<UserResponseDTO> deleteUser(@RequestParam String userId){
         return ResponseEntity.ok(userService.deleteUser(userId));
+    }
+
+    @PutMapping("/updateUser")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public ResponseEntity<UserResponseDTO> updateUser(
+            @RequestParam String userId,
+            @RequestBody UpdateUserRequestDTO dto) {
+        return ResponseEntity.ok(userService.updateUser(userId, dto));
     }
 }
