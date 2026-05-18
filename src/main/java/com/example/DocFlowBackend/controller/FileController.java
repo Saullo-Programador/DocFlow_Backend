@@ -54,40 +54,6 @@ public class FileController {
                 .normalize();
     }
 
-    @GetMapping
-    public ResponseEntity<FolderContentResponse> list(@RequestParam(defaultValue = "") String path) {
-        
-        Long folderId = null;
-        if (!path.isEmpty()) {
-            String dbPath = path.startsWith("/") ? path : "/" + path;
-            Optional<Folder> folder = folderRepository.findByPath(dbPath);
-            if (folder.isEmpty()) {
-                return ResponseEntity.ok(new FolderContentResponse(List.of(), List.of()));
-            }
-            folderId = folder.get().getId();
-        }
-
-        List<String> folders = folderRepository.findByParent_Id(folderId)
-                .stream()
-                .map(Folder::getName)
-                .toList();
-
-        String serverUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
-        
-        List<FileEntity> fileEntities;
-        if (folderId == null) {
-            fileEntities = fileRepository.findByFolderIdAndStatus(null, FileStatus.ACTIVE);
-        } else {
-            fileEntities = fileRepository.findByFolderIdAndStatus(folderId, FileStatus.ACTIVE);
-        }
-
-        List<FileResponseDTO> files = fileEntities.stream()
-                .map(f -> FileMapper.fromEntity(f, serverUrl + "/files/download?path=" + f.getFilePath()))
-                .toList();
-
-        return ResponseEntity.ok(new FolderContentResponse(folders, files));
-    }
-
     @PostMapping("/upload")
     public ResponseEntity<UploadResponseDTO> upload(
             @RequestParam("file") MultipartFile file, 
