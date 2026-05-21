@@ -123,16 +123,12 @@ public class FolderController {
         return ResponseEntity.ok(FolderMapper.toResponse(folder));
     }
 
-    @DeleteMapping("/delete")
+    @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteByPath(
-            @RequestParam String path
+            @PathVariable Long id
     ) {
         Long userId = SecurityUtil.getCurrentUserId();
-
-        Folder folder = folderRepository.findByPath(path)
-                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException("Pasta não encontrada"));
-
-        String message = folderService.deleteFolder(folder.getId(), userId);
+        String message = folderService.deleteFolder(id, userId);
         return ResponseEntity.ok(message);
     }
 
