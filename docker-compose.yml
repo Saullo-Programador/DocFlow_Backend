@@ -1,38 +1,19 @@
 services:
-  db:
-    image: mysql:8
-    container_name: docflow_db
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME}
-    ports:
-      - "3306:3306"
-    volumes:
-      - db_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
   backend:
     build: .
     container_name: docflow_backend
-    depends_on:
-      - db
+
     ports:
-      - "${SERVER_PORT}:8080"
+      - "8080:8080"
+
     environment:
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
-      SERVER_PORT: ${SERVER_PORT}
       STORAGE_PATH: ${STORAGE_PATH}
+
     volumes:
       - files_storage:${STORAGE_PATH}
 
 volumes:
-  db_data:
   files_storage:
