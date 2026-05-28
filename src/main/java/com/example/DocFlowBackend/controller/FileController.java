@@ -49,9 +49,13 @@ public class FileController {
         this.storageService = storageService;
         this.fileRepository = fileRepository;
         this.folderRepository = folderRepository;
+        System.out.println("STORAGE PATH: " + storageService.getStoragePath());
+
         this.rootPath = Paths.get(storageService.getStoragePath())
-                .toAbsolutePath()
-                .normalize();
+            .toAbsolutePath()
+            .normalize();
+
+        System.out.println("ROOT PATH: " + this.rootPath);
     }
 
     @PostMapping("/upload")
