@@ -88,6 +88,11 @@ public class FileService {
     public void deleteFilesByFolderId(Long folderId, Long userId) {
         List<FileEntity> files = fileRepository.findByFolderId(folderId);
         for (FileEntity file : files) {
+            try {
+                storageService.deleteFile(Paths.get(file.getFilePath())); // ✅ disco
+            } catch (IOException e) {
+                log.warn("Erro ao deletar arquivo do disco: {}", file.getFilePath(), e);
+            }
             fileRepository.delete(file);
             saveHistory(file.getName(), "DELETE (FOLDER CASCADE)", userId);
         }
