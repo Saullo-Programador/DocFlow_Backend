@@ -16,8 +16,29 @@ import java.util.stream.Stream;
 @Service
 public class FileStorageService {
     //local
-    @Value("${storage.path}")
-    private String storagePath;
+    //@Value("${storage.path}")
+    //private String storagePath;
+    private final String storagePath;
+
+    public FileStorageService() {
+
+        this.storagePath = Paths.get(
+                System.getProperty("user.dir"),
+                "storage"
+        ).toAbsolutePath().normalize().toString();
+
+        try {
+            Files.createDirectories(Paths.get(storagePath));
+
+            System.out.println("STORAGE PATH: " + storagePath);
+
+        } catch (IOException e) {
+            throw new RuntimeException(
+                    "Erro ao criar diretório storage",
+                    e
+            );
+        }
+    }
 
 
     public String save(MultipartFile file, Path targetDir) throws IOException {
