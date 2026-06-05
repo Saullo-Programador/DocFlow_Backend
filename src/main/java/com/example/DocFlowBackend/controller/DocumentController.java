@@ -41,13 +41,17 @@ public class DocumentController {
             files = fileRepository.findByFolderIdIsNull();
         } else {
             // Busca a pasta pelo path e retorna filhos
-            folders = folderRepository.findByPath(path)
-                    .map(f -> folderRepository.findByParent_Id(f.getId()))
-                    .orElse(List.of());
+            var folderOpt = folderRepository.findByPath(path);
 
-            files = folderRepository.findByPath(path)
-                    .map(f -> fileRepository.findByFolderId(f.getId()))
-                    .orElse(List.of());
+            if(folderOpt.isPresent()) {
+                Folder folder = folderOpt.get();
+
+                folders = folderRepository.findByParent_Id(folder.getId());
+                files = fileRepository.findByFolderId(folder.getId());
+            } else {
+                folders = List.of();
+                files = List.of();
+            }
         }
 
         String serverUrl = ServletUriComponentsBuilder
